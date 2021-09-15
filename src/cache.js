@@ -54,6 +54,28 @@ const write = async function (filename, compress, result) {
   return await writeFile(filename + (compress ? ".gz" : ""), data);
 };
 
+
+
+function updatePath(item) {
+  const { file } = item
+  const { resolved, request } = file
+  // return {
+  //   ...preset,
+  //   file: {
+  //     request: request.split('/node_modules/').slice(-1)[0],
+  //     resolved: resolved.split('/node_modules/').slice(-1)[0],
+  //   },
+  // }
+  let result = { ...item }
+  if (request) {
+    result.file.request = request.split('/node_modules/').slice(-1)[0]
+  }
+  if (resolved) {
+    result.file.resolved = resolved.split('/node_modules/').slice(-1)[0]
+  }
+  return result
+}
+
 /**
  * Build the filename for the cached file
  *
@@ -64,8 +86,23 @@ const write = async function (filename, compress, result) {
  */
 const filename = function (source, identifier, options) {
   const hash = crypto.createHash("md4");
-
-  const contents = JSON.stringify({ source, options, identifier });
+  const cacheOptions = JSON.parse(JSON.stringify(options))
+  const { plugins, presets } = cacheOptions
+  if (Array.isArray(plugins)) {
+    cacheOptions.plugins = plugins.map(plugin => {
+      return updatePath(plugin)
+    })
+  }
+  if (Array.isArray(presets)) {
+    cacheOptions.presets = presets.map(preset => {
+      return updatePath(preset)
+    })
+  }
+  const contents = JSON.stringify({
+    source,
+    options: cacheOptions,
+    identifier,
+  })
 
   hash.update(contents);
 
